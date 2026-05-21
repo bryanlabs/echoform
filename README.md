@@ -1,5 +1,10 @@
 # Echoform
 
+[![CI](https://github.com/bryanlabs/echoform/actions/workflows/ci.yml/badge.svg)](https://github.com/bryanlabs/echoform/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Platform](https://img.shields.io/badge/platform-macOS%2014%2B-lightgrey.svg)](#requirements)
+[![Swift](https://img.shields.io/badge/Swift-6.2-orange.svg)](https://swift.org)
+
 Echoform is a macOS app that turns whatever audio is playing on your Mac into
 a calm, beautiful visualization. It taps your system audio output and renders
 it as ambient, audio-reactive visuals, so whatever you are listening to
