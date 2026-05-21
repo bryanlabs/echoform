@@ -15,6 +15,10 @@ It is built to hold your eyes without taking your attention: ambient, not
 interactive; glanceable, not readable; audio-reactive, not content-competing.
 The point is visual interest while you listen, not a second task.
 
+![Echoform in Bars mode with the Cyberpunk theme and live on-device captions](docs/screenshots/cyberpunk-captions.png)
+
+*Bars mode with the Cyberpunk theme and on-device captions.*
+
 ## What it does
 
 - Captures whatever is playing through the system audio output, locally.
