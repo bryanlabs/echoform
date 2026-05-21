@@ -27,14 +27,22 @@ Nothing is recorded, saved, or sent anywhere. Echoform makes no network calls.
 
 ## Build and install
 
+Building from source is the recommended way to run Echoform. You can read
+every line first, and a build you compiled yourself is not quarantined, so it
+opens with no Gatekeeper prompt (see "Permissions and trust" below).
+
 ```sh
+git clone https://github.com/bryanlabs/echoform.git
+cd echoform
 ./Scripts/install.sh
 ```
 
-This builds a signed `Echoform.app`, installs it to `/Applications`, and
-installs an `echoform` launcher into `~/bin`.
+This builds `Echoform.app`, installs it to `/Applications`, and installs an
+`echoform` launcher into `~/bin`. The build is ad-hoc signed. If you have an
+Apple Development certificate it is used automatically instead, which keeps
+macOS from re-asking for Screen Recording access on every rebuild.
 
-- `./Scripts/package-app.sh` builds the signed app into `dist/` without installing.
+- `./Scripts/package-app.sh` builds the app into `dist/` without installing.
 - `./Scripts/make-icon.sh` regenerates the app icon.
 
 ## First run: grant Screen Recording access
@@ -49,8 +57,7 @@ Echoform only ever captures audio, never video.
 3. Enable **Echoform** in the list, and authenticate when macOS asks.
 4. Quit and reopen Echoform.
 
-The grant is keyed to the app's stable signing identity, so it survives
-rebuilds. You only do this once.
+macOS remembers the grant, so you only do this once.
 
 ## Controls
 
@@ -58,7 +65,7 @@ Controls are sparse and mostly hidden. Move the mouse to reveal a hint bar.
 
 | Key      | Action                            |
 |----------|-----------------------------------|
-| `1`–`6`  | Switch visual mode                |
+| `1`-`6`  | Switch visual mode                |
 | `Space`  | Pause / resume                    |
 | `F`      | Toggle full screen                |
 | `Esc`    | Leave full screen                 |
@@ -72,12 +79,12 @@ Controls are sparse and mostly hidden. Move the mouse to reveal a hint bar.
 
 ## Visual modes
 
-1. **Bars** — symmetric loudness and frequency bars.
-2. **Wave Ribbon** — a smooth, glowing waveform ribbon.
-3. **Spectral Heat** — a slow-scrolling spectrogram.
-4. **Pulse Field** — breathing shapes driven by loudness and bass.
-5. **Flow Field** — a slowly flowing vector field shaped by mids and treble.
-6. **Combined** — heat, pulse, and bars layered into one ambient view.
+1. **Bars.** Symmetric loudness and frequency bars.
+2. **Wave Ribbon.** A smooth, glowing waveform ribbon.
+3. **Spectral Heat.** A slow-scrolling spectrogram.
+4. **Pulse Field.** Breathing shapes driven by loudness and bass.
+5. **Flow Field.** A slowly flowing vector field shaped by mids and treble.
+6. **Combined.** Heat, pulse, and bars layered into one ambient view.
 
 ## Captions and the delay
 
@@ -108,16 +115,49 @@ echoform --demo
 Add `--text` to start with the caption layer on. Demo mode feeds a synthetic
 signal through the renderer, useful for trying modes, themes, and brightness.
 
-## Privacy
+## Permissions and trust
 
-Audio is analyzed and transcribed locally in real time and never leaves the
-machine. Echoform makes no network calls and never records, saves, or uploads
-audio or transcripts.
+Echoform asks for two macOS permissions, and only those two.
+
+- **Screen Recording.** macOS routes system-audio capture through the Screen
+  Recording permission, so ScreenCaptureKit needs it. Echoform uses it only to
+  read the audio that is already playing. It never captures, shows, or saves
+  the screen or any video. Granting it is a one-time step (see "First run").
+- **Speech Recognition.** Requested only when you turn captions on (`T`).
+  Recognition is forced on-device; if a Mac cannot do on-device recognition,
+  captions simply do not run, rather than sending audio to a server.
+
+Echoform makes no network calls and never records, saves, or uploads audio,
+transcripts, or anything else. Audio is analyzed in memory in real time and
+then discarded.
+
+### Why there is no notarized download
+
+An app that opens with no warning on any Mac has to be notarized by Apple,
+which requires a paid Apple Developer Program membership. Echoform is a free,
+zero-budget project and is not enrolled, so it is not notarized.
+
+That is why building from source is the recommended path: the whole app is in
+this repository, you can audit it, and a build you compiled locally is not
+quarantined, so it opens with no Gatekeeper prompt.
+
+If a release attaches a pre-built `Echoform.app`, macOS blocks it on first
+launch because it is not notarized. To open it anyway, launch it once, then
+open System Settings › Privacy & Security, find the note about Echoform being
+blocked, and click **Open Anyway**. Or clear the download quarantine first:
+
+```sh
+xattr -dr com.apple.quarantine /path/to/Echoform.app
+```
 
 ## Project layout
 
-- `Sources/EchoformKit/` — the engine library: capture, analysis, observable
+- `Sources/EchoformKit/` is the engine library: capture, analysis, observable
   state, speech, and the SwiftUI renderers.
-- `Sources/Echoform/` — the app entry point.
-- `Tests/EchoformKitTests/` — unit tests for the analysis layer.
-- `Scripts/` — build, sign, install, and icon scripts.
+- `Sources/Echoform/` is the app entry point.
+- `Tests/EchoformKitTests/` holds unit tests for the analysis layer.
+- `Scripts/` holds the build, sign, install, and icon scripts.
+
+## License
+
+MIT. See [LICENSE](LICENSE).
