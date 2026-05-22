@@ -114,7 +114,11 @@ public final class CaptureCoordinator {
             state.captionStatus = "Speech Recognition permission denied"
         case .unavailable:
             let name = CaptionLanguage.named(state.sourceLanguage).name
-            state.captionStatus = "On-device \(name) speech is not installed. In the captions panel (L), turn off \"On-device only\" to use Apple's online recognition."
+            if state.onDeviceOnly {
+                state.captionStatus = "On-device \(name) speech is not installed. Turn off \"On-device Only\" to use Apple's online recognition."
+            } else {
+                state.captionStatus = "\(name) speech recognition is unavailable."
+            }
         }
     }
 

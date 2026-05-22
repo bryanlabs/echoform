@@ -1,6 +1,7 @@
+import Foundation
 import SwiftUI
 
-/// A small, low-contrast hint bar that appears on mouse movement and fades.
+/// A small, low-contrast status bar that appears on mouse movement and fades.
 public struct ControlOverlay: View {
     @Environment(VisualizerState.self) private var state
 
@@ -12,21 +13,17 @@ public struct ControlOverlay: View {
             divider
             label(state.isPaused ? "paused" : "playing")
             divider
-            label("1-6 modes")
-            label("space pause")
-            label("F full screen")
-            label("[ ] intensity")
-            label("B brightness")
-            label("\u{2190}\u{2192} theme")
-            label("C colors")
-            divider
+            label("right-click controls")
+
             if state.textEnabled {
-                label("delay \(Int(state.captionDelay))s", emphasis: true)
-                label(", . adjust")
+                divider
+                label(captionSummary, emphasis: true)
+                if abs(state.captionDelay) > 0.001 {
+                    label("sync \(offsetLabel(state.captionDelay))")
+                }
             } else {
-                label("T captions")
+                label("captions off")
             }
-            label("L language")
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 9)
@@ -43,5 +40,20 @@ public struct ControlOverlay: View {
 
     private var divider: some View {
         Rectangle().fill(.white.opacity(0.15)).frame(width: 1, height: 11)
+    }
+
+    private var captionSummary: String {
+        let source = CaptionLanguage.named(state.sourceLanguage).name
+        guard state.translationEnabled else { return "\(source) captions" }
+        let target = CaptionLanguage.named(state.targetLanguage).name
+        return "\(source) to \(target)"
+    }
+
+    private func offsetLabel(_ seconds: Double) -> String {
+        let sign = seconds > 0 ? "+" : ""
+        if abs(seconds.rounded() - seconds) < 0.001 {
+            return "\(sign)\(Int(seconds))s"
+        }
+        return "\(sign)\(String(format: "%.2f", seconds))s"
     }
 }

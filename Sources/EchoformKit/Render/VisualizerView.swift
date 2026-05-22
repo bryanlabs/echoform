@@ -23,6 +23,9 @@ public struct VisualizerView: View {
                 }
             }
             .contentShape(Rectangle())
+            .contextMenu {
+                VisualizerContextMenu()
+            }
             .onContinuousHover { phase in
                 if case .active = phase { revealControls() }
             }

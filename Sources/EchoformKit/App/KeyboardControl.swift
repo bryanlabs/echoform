@@ -68,8 +68,8 @@ public final class KeyboardControl {
         case "l": state.toggleCaptionPanel()
         case "[": state.adjustIntensity(-0.12)
         case "]": state.adjustIntensity(0.12)
-        case ",": state.adjustCaptionDelay(-1)
-        case ".": state.adjustCaptionDelay(1)
+        case ",": state.adjustCaptionDelay(-VisualizerState.captionDelayStep)
+        case ".": state.adjustCaptionDelay(VisualizerState.captionDelayStep)
         default: return false
         }
         return true

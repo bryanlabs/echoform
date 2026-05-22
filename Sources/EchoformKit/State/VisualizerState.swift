@@ -5,8 +5,7 @@ import QuartzCore
 /// smoothed render signals the views draw from, the caption layer, and theme.
 ///
 /// Captured frames are buffered and played back through a delay line, so the
-/// whole visualization can be held back to line up with the (inherently
-/// delayed) captions.
+/// visualization and captions can be nudged into sync with each other.
 @MainActor
 @Observable
 public final class VisualizerState {
@@ -38,24 +37,28 @@ public final class VisualizerState {
     // Caption layer and the shared visualization delay.
     /// Whether the delayed caption layer is shown. Off by default.
     public var textEnabled = false
-    /// Seconds the whole visualization is delayed (0...10). At 0 the bars run
-    /// in real time and captions lag behind by the recognition latency. Raised
-    /// past that latency, the bars are held back and the words line up.
+    /// Seconds of caption/visual sync offset (-2...10). Positive values hold
+    /// back the visualization. Negative values can make already-recognized
+    /// captions feel earlier, but cannot display text before recognition emits
+    /// it.
     public var captionDelay: Double = 0
     public private(set) var captionWords: [CaptionWord] = []
     private var nextCaptionID = 0
     private let maxCaptionWords = 64
 
-    /// Estimated lag between audio and its on-device transcription. The caption
-    /// layer offsets by this, so a delay at or above it syncs words to the bars.
+    /// Estimated lag between audio and its transcription. The caption layer
+    /// offsets by this, so positive visual delay can sync words to the bars.
     public static let recognitionLatency: Double = 2.0
+    public static let minCaptionDelay: Double = -2.0
+    public static let maxCaptionDelay: Double = 10.0
+    public static let captionDelayStep: Double = 0.25
 
     // Caption language and translation.
     /// Spoken language recognized by the transcriber (see `CaptionLanguage`).
     public var sourceLanguage = "en"
     /// Recognize only on-device. Off allows Apple's online recognition for
     /// languages that have no local model.
-    public var onDeviceOnly = true
+    public var onDeviceOnly = false
     /// Whether recognized speech is translated before being shown.
     public var translationEnabled = false
     /// Language the captions are translated into when translation is on.
@@ -158,17 +161,32 @@ public final class VisualizerState {
     public func select(_ mode: VisualMode) { self.mode = mode }
     public func togglePause() { isPaused.toggle() }
     public func cycleBrightness() { brightnessLevel = (brightnessLevel + 1) % 3 }
+    public func setBrightnessLevel(_ level: Int) {
+        brightnessLevel = min(2, max(0, level))
+    }
     public func adjustIntensity(_ delta: Double) {
         intensity = min(1.8, max(0.3, intensity + delta))
+    }
+    public func setIntensity(_ value: Double) {
+        intensity = min(1.8, max(0.3, value))
     }
 
     // MARK: Caption layer
 
     public func toggleText() { textEnabled.toggle() }
 
-    /// Adjusts the visualization delay, clamped to 0...10 seconds.
+    /// Adjusts the caption/visual sync offset, clamped to -2...10 seconds.
     public func adjustCaptionDelay(_ delta: Double) {
-        captionDelay = min(10, max(0, (captionDelay + delta).rounded()))
+        captionDelay = clampCaptionDelay(captionDelay + delta)
+    }
+
+    public func setCaptionDelay(_ value: Double) {
+        captionDelay = clampCaptionDelay(value)
+    }
+
+    private func clampCaptionDelay(_ value: Double) -> Double {
+        let rounded = (value * 100).rounded() / 100
+        return min(Self.maxCaptionDelay, max(Self.minCaptionDelay, rounded))
     }
 
     /// Appends newly recognized words, trimming the oldest beyond the cap.

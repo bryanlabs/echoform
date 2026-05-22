@@ -1,8 +1,7 @@
 import SwiftUI
 
-/// The captions and translation panel, toggled with the `L` key. Chooses the
-/// spoken language for transcription and an optional on-device translation
-/// target.
+/// The captions and translation panel. Chooses the spoken language for
+/// transcription and an optional on-device translation target.
 public struct CaptionPanel: View {
     @Environment(VisualizerState.self) private var state
     @Environment(CaptureCoordinator.self) private var coordinator
@@ -22,7 +21,7 @@ public struct CaptionPanel: View {
             }
 
             Toggle(isOn: onDeviceBinding) {
-                Text("On-device only")
+                Text("On-device Only")
                     .font(.system(size: 11, design: .rounded))
                     .foregroundStyle(.white.opacity(0.7))
             }
@@ -52,7 +51,7 @@ public struct CaptionPanel: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
 
-            Text("T toggles captions, L closes")
+            Text("Right-click for all controls")
                 .font(.system(size: 10, design: .rounded))
                 .foregroundStyle(.white.opacity(0.3))
         }

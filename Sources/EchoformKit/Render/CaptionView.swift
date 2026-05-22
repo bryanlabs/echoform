@@ -41,8 +41,9 @@ public struct CaptionView: View {
         .allowsHitTesting(false)
     }
 
-    /// Seconds the word has been visible. The recognition-latency offset means
-    /// a `captionDelay` at or above that latency lines words up with the bars.
+    /// Seconds the word has been visible. This can make recognized words feel
+    /// earlier or later relative to the delayed visual playback, but it cannot
+    /// display a word before the recognizer emits it.
     private func shownFor(_ word: CaptionWord, now: Double) -> Double {
         let dueTime = word.spokenMediaTime
             - VisualizerState.recognitionLatency
