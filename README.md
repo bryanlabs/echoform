@@ -142,16 +142,19 @@ Echoform asks for two macOS permissions, and only those two.
   Recording permission, so ScreenCaptureKit needs it. Echoform uses it only to
   read the audio that is already playing. It never captures, shows, or saves
   the screen or any video. Granting it is a one-time step (see "First run").
-- **Speech Recognition.** Requested only when you turn captions on (`T`).
-  Recognition runs on-device in the language you choose; if a Mac cannot do
-  on-device recognition for that language, captions simply do not run, rather
-  than sending audio to a server.
+- **Speech Recognition.** Requested only when you turn captions on (`T`). By
+  default Echoform recognizes speech on-device, so audio stays on the Mac. A
+  language with no on-device model does not transcribe until you install that
+  model or turn off **On-device only** in the captions panel (`L`). With that
+  off, recognition for such a language uses Apple's online speech service, the
+  same one macOS Dictation uses.
 
 Echoform itself makes no network calls and never records, saves, or uploads
 audio, transcripts, or anything else. Audio is analyzed in memory in real time
-and then discarded. Recognition and translation both run on-device; the only
-network use is macOS downloading a translation language pack the first time
-you pick a new pair.
+and then discarded. Recognition and translation run on-device by default. The
+exceptions: macOS downloads a translation language pack the first time you pick
+a new pair, and, with **On-device only** off, recognition for a language with
+no local model uses Apple's online speech service.
 
 ### Why there is no notarized download
 

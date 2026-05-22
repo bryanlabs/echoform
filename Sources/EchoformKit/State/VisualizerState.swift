@@ -53,6 +53,9 @@ public final class VisualizerState {
     // Caption language and translation.
     /// Spoken language recognized by the transcriber (see `CaptionLanguage`).
     public var sourceLanguage = "en"
+    /// Recognize only on-device. Off allows Apple's online recognition for
+    /// languages that have no local model.
+    public var onDeviceOnly = true
     /// Whether recognized speech is translated before being shown.
     public var translationEnabled = false
     /// Language the captions are translated into when translation is on.

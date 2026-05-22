@@ -51,6 +51,8 @@ public final class CaptionTranslator {
                 let response = try await session.translate(phrase)
                 onTranslated?(response.targetText)
             } catch {
+                // Fall back to the original text so transcription stays visible.
+                onTranslated?(phrase)
                 Log.app.error("Translation failed: \(error.localizedDescription, privacy: .public)")
             }
         }

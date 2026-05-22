@@ -27,6 +27,22 @@ public struct VisualizerView: View {
                 if case .active = phase { revealControls() }
             }
 
+            if state.textEnabled, !state.captionStatus.isEmpty {
+                VStack {
+                    Spacer()
+                    Text(state.captionStatus)
+                        .font(.system(size: 13, weight: .medium, design: .rounded))
+                        .multilineTextAlignment(.center)
+                        .foregroundStyle(.white.opacity(0.6))
+                        .frame(maxWidth: 460)
+                        .padding(.horizontal, 18)
+                        .padding(.vertical, 11)
+                        .background(.black.opacity(0.45), in: RoundedRectangle(cornerRadius: 13))
+                        .padding(.bottom, 58)
+                }
+                .allowsHitTesting(false)
+            }
+
             if controlsVisible {
                 VStack {
                     Spacer()

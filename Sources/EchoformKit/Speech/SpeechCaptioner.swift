@@ -1,10 +1,10 @@
 import Speech
 import AVFoundation
 
-/// Apple Speech framework transcriber. Recognition is on-device only, so no
-/// audio leaves the machine; if a locale has no on-device model it reports
-/// `.unavailable` rather than falling back to a server. Internal state is
-/// serialized on a private queue.
+/// Apple Speech framework transcriber. By default recognition is on-device
+/// only, so no audio leaves the machine. When on-device-only is turned off,
+/// languages without a local model use Apple's online recognition instead.
+/// Internal state is serialized on a private queue.
 public final class SpeechCaptioner: Transcriber, @unchecked Sendable {
     public var onResult: ((TranscriptionResult) -> Void)?
     public var onStatus: ((TranscriberStatus) -> Void)?
@@ -14,10 +14,12 @@ public final class SpeechCaptioner: Transcriber, @unchecked Sendable {
     private var request: SFSpeechAudioBufferRecognitionRequest?
     private var task: SFSpeechRecognitionTask?
     private var running = false
+    private var onDeviceOnly: Bool
 
     /// Creates a transcriber for the given speech locale (e.g. `en-US`, `ko-KR`).
-    public init(locale: Locale) {
-        recognizer = SFSpeechRecognizer(locale: locale)
+    public init(locale: Locale, onDeviceOnly: Bool) {
+        self.recognizer = SFSpeechRecognizer(locale: locale)
+        self.onDeviceOnly = onDeviceOnly
     }
 
     public func enable() {
@@ -28,8 +30,11 @@ public final class SpeechCaptioner: Transcriber, @unchecked Sendable {
                     self.report(.denied)
                     return
                 }
-                guard let recognizer = self.recognizer,
-                      recognizer.supportsOnDeviceRecognition else {
+                guard let recognizer = self.recognizer else {
+                    self.report(.unavailable)
+                    return
+                }
+                if self.onDeviceOnly, !recognizer.supportsOnDeviceRecognition {
                     self.report(.unavailable)
                     return
                 }
@@ -51,15 +56,19 @@ public final class SpeechCaptioner: Transcriber, @unchecked Sendable {
         }
     }
 
-    /// Switches the recognition language, rebuilding the recognizer and
-    /// restarting recognition if it is currently running.
-    public func updateLocale(_ locale: Locale) {
+    /// Switches the recognition language and on-device-only mode, rebuilding the
+    /// recognizer and restarting recognition if it is currently running.
+    public func reconfigure(locale: Locale, onDeviceOnly: Bool) {
         queue.async {
             self.recognizer = SFSpeechRecognizer(locale: locale)
+            self.onDeviceOnly = onDeviceOnly
             guard self.running else { return }
-            guard let recognizer = self.recognizer,
-                  recognizer.supportsOnDeviceRecognition else {
+            if onDeviceOnly, !(self.recognizer?.supportsOnDeviceRecognition ?? false) {
                 self.report(.unavailable)
+                self.task?.cancel()
+                self.request?.endAudio()
+                self.task = nil
+                self.request = nil
                 return
             }
             self.report(.listening)
@@ -102,7 +111,7 @@ public final class SpeechCaptioner: Transcriber, @unchecked Sendable {
 
         let request = SFSpeechAudioBufferRecognitionRequest()
         request.shouldReportPartialResults = true
-        request.requiresOnDeviceRecognition = true
+        request.requiresOnDeviceRecognition = onDeviceOnly
         request.addsPunctuation = true
         self.request = request
         self.task = recognizer.recognitionTask(with: request) { [weak self] result, error in

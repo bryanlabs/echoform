@@ -21,6 +21,14 @@ public struct CaptionPanel: View {
                 }
             }
 
+            Toggle(isOn: onDeviceBinding) {
+                Text("On-device only")
+                    .font(.system(size: 11, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.7))
+            }
+            .toggleStyle(.switch)
+            .tint(.white.opacity(0.45))
+
             Toggle(isOn: translationBinding) {
                 Text("Translate")
                     .font(.system(size: 11, design: .rounded))
@@ -53,6 +61,13 @@ public struct CaptionPanel: View {
         .background(.black.opacity(0.88), in: RoundedRectangle(cornerRadius: 18))
         .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(.white.opacity(0.12)))
         .shadow(color: .black.opacity(0.5), radius: 24, y: 10)
+    }
+
+    private var onDeviceBinding: Binding<Bool> {
+        Binding(
+            get: { state.onDeviceOnly },
+            set: { coordinator.setOnDeviceOnly($0) }
+        )
     }
 
     private var translationBinding: Binding<Bool> {

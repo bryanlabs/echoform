@@ -21,7 +21,8 @@ public final class CaptureCoordinator {
     public init(state: VisualizerState) {
         self.state = state
         self.speech = SpeechCaptioner(
-            locale: Locale(identifier: CaptionLanguage.named(state.sourceLanguage).speechLocale))
+            locale: Locale(identifier: CaptionLanguage.named(state.sourceLanguage).speechLocale),
+            onDeviceOnly: state.onDeviceOnly)
         self.pipeline = CaptionPipeline(state: state, translator: translator)
 
         speech.onResult = { [weak self] result in
@@ -72,7 +73,22 @@ public final class CaptureCoordinator {
         guard code != state.sourceLanguage else { return }
         state.sourceLanguage = code
         pipeline.reset()
-        speech.updateLocale(Locale(identifier: CaptionLanguage.named(code).speechLocale))
+        reconfigureSpeech()
+    }
+
+    /// Switches between on-device-only recognition and allowing Apple's online
+    /// recognition for languages without a local model.
+    public func setOnDeviceOnly(_ value: Bool) {
+        guard value != state.onDeviceOnly else { return }
+        state.onDeviceOnly = value
+        pipeline.reset()
+        reconfigureSpeech()
+    }
+
+    private func reconfigureSpeech() {
+        speech.reconfigure(
+            locale: Locale(identifier: CaptionLanguage.named(state.sourceLanguage).speechLocale),
+            onDeviceOnly: state.onDeviceOnly)
     }
 
     /// Changes the language captions are translated into.
@@ -98,7 +114,7 @@ public final class CaptureCoordinator {
             state.captionStatus = "Speech Recognition permission denied"
         case .unavailable:
             let name = CaptionLanguage.named(state.sourceLanguage).name
-            state.captionStatus = "On-device speech for \(name) is not installed"
+            state.captionStatus = "On-device \(name) speech is not installed. In the captions panel (L), turn off \"On-device only\" to use Apple's online recognition."
         }
     }
 
