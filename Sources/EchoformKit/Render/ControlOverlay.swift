@@ -26,6 +26,7 @@ public struct ControlOverlay: View {
             } else {
                 label("T captions")
             }
+            label("L language")
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 9)

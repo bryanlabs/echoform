@@ -50,6 +50,18 @@ public final class VisualizerState {
     /// layer offsets by this, so a delay at or above it syncs words to the bars.
     public static let recognitionLatency: Double = 2.0
 
+    // Caption language and translation.
+    /// Spoken language recognized by the transcriber (see `CaptionLanguage`).
+    public var sourceLanguage = "en"
+    /// Whether recognized speech is translated before being shown.
+    public var translationEnabled = false
+    /// Language the captions are translated into when translation is on.
+    public var targetLanguage = "en"
+    /// Short status for the caption layer, shown in the captions panel.
+    public var captionStatus = ""
+    /// Whether the captions and translation panel is shown.
+    public var showCaptionPanel = false
+
     // Theme.
     public var theme: Theme = .classic
     public var customStops: [ThemeColor] = Theme.classic.stops
@@ -175,7 +187,15 @@ public final class VisualizerState {
 
     // MARK: Theme
 
-    public func toggleThemePanel() { showThemePanel.toggle() }
+    public func toggleThemePanel() {
+        showThemePanel.toggle()
+        if showThemePanel { showCaptionPanel = false }
+    }
+
+    public func toggleCaptionPanel() {
+        showCaptionPanel.toggle()
+        if showCaptionPanel { showThemePanel = false }
+    }
 
     public func selectTheme(_ theme: Theme) { self.theme = theme }
 

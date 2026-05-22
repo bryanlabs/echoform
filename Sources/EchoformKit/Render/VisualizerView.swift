@@ -1,9 +1,11 @@
 import SwiftUI
+import Translation
 
 /// Hosts the active visual mode in a 60 fps `TimelineView`, the caption layer,
 /// the theme panel, and the fade-in control hints.
 public struct VisualizerView: View {
     @Environment(VisualizerState.self) private var state
+    @Environment(CaptureCoordinator.self) private var coordinator
     @State private var controlsVisible = false
     @State private var hideTask: Task<Void, Never>?
 
@@ -38,9 +40,25 @@ public struct VisualizerView: View {
                 ThemePanel()
                     .transition(.opacity.combined(with: .scale(scale: 0.97)))
             }
+
+            if state.showCaptionPanel {
+                CaptionPanel()
+                    .transition(.opacity.combined(with: .scale(scale: 0.97)))
+            }
         }
         .animation(.easeInOut(duration: 0.5), value: controlsVisible)
         .animation(.easeInOut(duration: 0.22), value: state.showThemePanel)
+        .animation(.easeInOut(duration: 0.22), value: state.showCaptionPanel)
+        .translationTask(translationConfiguration) { session in
+            await coordinator.translator.serve(using: session)
+        }
+    }
+
+    private var translationConfiguration: TranslationSession.Configuration? {
+        guard state.translationEnabled else { return nil }
+        return TranslationSession.Configuration(
+            source: Locale.Language(identifier: state.sourceLanguage),
+            target: Locale.Language(identifier: state.targetLanguage))
     }
 
     @ViewBuilder

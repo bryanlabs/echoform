@@ -3,23 +3,35 @@ import Observation
 import QuartzCore
 
 /// Bridges `AudioCapture` (background queue) and `VisualizerState` (main actor),
-/// drives the on-device caption layer, and runs the delayed playback loop.
+/// drives the caption pipeline (transcription and optional translation), and
+/// runs the delayed playback loop.
 @MainActor
 @Observable
 public final class CaptureCoordinator {
     public let state: VisualizerState
+    /// On-device translator, served by the SwiftUI `translationTask` modifier.
+    public let translator = CaptionTranslator()
+
     private var capture: AudioCapture?
     private var consumeTask: Task<Void, Never>?
     private var playbackTask: Task<Void, Never>?
-    private let captioner = SpeechCaptioner()
+    private let speech: SpeechCaptioner
+    private let pipeline: CaptionPipeline
 
     public init(state: VisualizerState) {
         self.state = state
-        captioner.onSegments = { [weak state] segments in
-            state?.addCaptionWords(segments)
+        self.speech = SpeechCaptioner(
+            locale: Locale(identifier: CaptionLanguage.named(state.sourceLanguage).speechLocale))
+        self.pipeline = CaptionPipeline(state: state, translator: translator)
+
+        speech.onResult = { [weak self] result in
+            self?.pipeline.consume(result)
         }
-        captioner.onStatus = { status in
-            Log.app.info("Captioner status: \(String(describing: status), privacy: .public)")
+        speech.onStatus = { [weak self] status in
+            self?.handleStatus(status)
+        }
+        translator.onStatus = { [weak self] status in
+            self?.state.captionStatus = status
         }
     }
 
@@ -44,13 +56,49 @@ public final class CaptureCoordinator {
         ScreenRecordingAccess.openSystemSettings()
     }
 
-    /// Toggles the caption layer, starting or stopping on-device recognition.
+    /// Toggles the caption layer, starting or stopping recognition.
     public func toggleText() {
         state.toggleText()
         if state.textEnabled {
-            captioner.enable()
+            pipeline.reset()
+            speech.enable()
         } else {
-            captioner.disable()
+            speech.disable()
+        }
+    }
+
+    /// Changes the spoken language and rebuilds recognition for it.
+    public func setSourceLanguage(_ code: String) {
+        guard code != state.sourceLanguage else { return }
+        state.sourceLanguage = code
+        pipeline.reset()
+        speech.updateLocale(Locale(identifier: CaptionLanguage.named(code).speechLocale))
+    }
+
+    /// Changes the language captions are translated into.
+    public func setTargetLanguage(_ code: String) {
+        state.targetLanguage = code
+    }
+
+    /// Turns translation on or off. Turning it on also shows the caption layer.
+    public func setTranslationEnabled(_ on: Bool) {
+        state.translationEnabled = on
+        pipeline.reset()
+        if on, !state.textEnabled {
+            toggleText()
+        }
+    }
+
+    private func handleStatus(_ status: TranscriberStatus) {
+        Log.app.info("Transcriber status: \(String(describing: status), privacy: .public)")
+        switch status {
+        case .idle, .listening:
+            state.captionStatus = ""
+        case .denied:
+            state.captionStatus = "Speech Recognition permission denied"
+        case .unavailable:
+            let name = CaptionLanguage.named(state.sourceLanguage).name
+            state.captionStatus = "On-device speech for \(name) is not installed"
         }
     }
 
@@ -97,15 +145,15 @@ public final class CaptureCoordinator {
                 if error != nil { self.state.permission = .denied }
             }
         }
-        let captioner = self.captioner
+        let speech = self.speech
         capture.onMonoBuffer = { mono, sampleRate in
-            captioner.append(mono: mono, sampleRate: sampleRate)
+            speech.append(mono: mono, sampleRate: sampleRate)
         }
         do {
             try await capture.start()
             self.capture = capture
             state.isCapturing = true
-            if state.textEnabled { captioner.enable() }
+            if state.textEnabled { speech.enable() }
             let frames = capture.frames
             consumeTask = Task { @MainActor [weak self] in
                 for await frame in frames {
@@ -136,7 +184,7 @@ public final class CaptureCoordinator {
         consumeTask = nil
         playbackTask?.cancel()
         playbackTask = nil
-        captioner.disable()
+        speech.disable()
         await capture?.stop()
         capture = nil
         state.isCapturing = false

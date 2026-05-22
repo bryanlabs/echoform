@@ -1,34 +1,25 @@
 import Speech
 import AVFoundation
-import QuartzCore
 
-/// On-device speech recognition for the caption layer.
-///
-/// Audio buffers from the system-audio capture are fed in; recognized words
-/// are emitted, stamped with the time they were recognized, so the caption
-/// view can apply a configurable delay. Recognition is on-device only, so no
-/// audio leaves the machine. Internal state is serialized on a private queue.
-public final class SpeechCaptioner: @unchecked Sendable {
-    public enum Status: Sendable {
-        case idle, denied, unavailable, listening
-    }
-
-    /// Called on the main queue with newly stable caption words.
-    public var onSegments: (([CaptionSegment]) -> Void)?
-    /// Called on the main queue when the captioner's status changes.
-    public var onStatus: ((Status) -> Void)?
+/// Apple Speech framework transcriber. Recognition is on-device only, so no
+/// audio leaves the machine; if a locale has no on-device model it reports
+/// `.unavailable` rather than falling back to a server. Internal state is
+/// serialized on a private queue.
+public final class SpeechCaptioner: Transcriber, @unchecked Sendable {
+    public var onResult: ((TranscriptionResult) -> Void)?
+    public var onStatus: ((TranscriberStatus) -> Void)?
 
     private let queue = DispatchQueue(label: "net.bryanlabs.echoform.speech")
-    private let recognizer = SFSpeechRecognizer(locale: Locale(identifier: "en-US"))
+    private var recognizer: SFSpeechRecognizer?
     private var request: SFSpeechAudioBufferRecognitionRequest?
     private var task: SFSpeechRecognitionTask?
-    private var emitted = 0
     private var running = false
 
-    public init() {}
+    /// Creates a transcriber for the given speech locale (e.g. `en-US`, `ko-KR`).
+    public init(locale: Locale) {
+        recognizer = SFSpeechRecognizer(locale: locale)
+    }
 
-    /// Requests Speech Recognition authorization and, if granted, starts
-    /// on-device recognition.
     public func enable() {
         SFSpeechRecognizer.requestAuthorization { [weak self] status in
             guard let self else { return }
@@ -60,7 +51,27 @@ public final class SpeechCaptioner: @unchecked Sendable {
         }
     }
 
-    /// Feeds one mono audio buffer to the recognizer.
+    /// Switches the recognition language, rebuilding the recognizer and
+    /// restarting recognition if it is currently running.
+    public func updateLocale(_ locale: Locale) {
+        queue.async {
+            self.recognizer = SFSpeechRecognizer(locale: locale)
+            guard self.running else { return }
+            guard let recognizer = self.recognizer,
+                  recognizer.supportsOnDeviceRecognition else {
+                self.report(.unavailable)
+                return
+            }
+            self.report(.listening)
+            if self.task != nil {
+                // The cancelled task's callback restarts with the new recognizer.
+                self.task?.cancel()
+            } else {
+                self.startTask()
+            }
+        }
+    }
+
     public func append(mono: [Float], sampleRate: Double) {
         queue.async {
             guard let request = self.request, !mono.isEmpty,
@@ -94,48 +105,30 @@ public final class SpeechCaptioner: @unchecked Sendable {
         request.requiresOnDeviceRecognition = true
         request.addsPunctuation = true
         self.request = request
-        self.emitted = 0
         self.task = recognizer.recognitionTask(with: request) { [weak self] result, error in
             guard let self else { return }
-            let words = result?.bestTranscription.segments.map { $0.substring } ?? []
+            let text = result?.bestTranscription.formattedString ?? ""
             let isFinal = result?.isFinal ?? false
             let failed = error != nil
             self.queue.async {
-                self.consume(words: words, isFinal: isFinal, failed: failed)
+                let final = isFinal || failed
+                if !text.isEmpty || final {
+                    self.emit(TranscriptionResult(text: text, isFinal: final))
+                }
+                if final, self.running {
+                    self.task = nil
+                    self.request = nil
+                    self.startTask()
+                }
             }
         }
     }
 
-    private func consume(words: [String], isFinal: Bool, failed: Bool) {
-        let stableCount = isFinal ? words.count : max(0, words.count - 1)
-        if stableCount > emitted {
-            // The recognizer does not give reliable per-word timestamps for
-            // on-device partial results, so words are stamped at the moment
-            // they are recognized, spread slightly so a batch surfaces word
-            // by word. The caption delay is measured from there.
-            var segments: [CaptionSegment] = []
-            let stamp = CACurrentMediaTime()
-            for i in emitted..<stableCount {
-                let text = words[i].trimmingCharacters(in: .whitespaces)
-                guard !text.isEmpty else { continue }
-                segments.append(CaptionSegment(
-                    text: text,
-                    spokenMediaTime: stamp + Double(segments.count) * 0.28))
-            }
-            emitted = stableCount
-            if !segments.isEmpty {
-                let payload = segments
-                DispatchQueue.main.async { [weak self] in self?.onSegments?(payload) }
-            }
-        }
-        if (failed || isFinal), running {
-            task = nil
-            request = nil
-            startTask()
-        }
+    private func emit(_ result: TranscriptionResult) {
+        DispatchQueue.main.async { [weak self] in self?.onResult?(result) }
     }
 
-    private func report(_ status: Status) {
+    private func report(_ status: TranscriberStatus) {
         DispatchQueue.main.async { [weak self] in self?.onStatus?(status) }
     }
 }

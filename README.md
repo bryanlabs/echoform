@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/bryanlabs/echoform/actions/workflows/ci.yml/badge.svg)](https://github.com/bryanlabs/echoform/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Platform](https://img.shields.io/badge/platform-macOS%2014%2B-lightgrey.svg)](#requirements)
+[![Platform](https://img.shields.io/badge/platform-macOS%2015%2B-lightgrey.svg)](#requirements)
 [![Swift](https://img.shields.io/badge/Swift-6.2-orange.svg)](https://swift.org)
 
 Echoform is a macOS app that turns whatever audio is playing on your Mac into
@@ -24,14 +24,15 @@ The point is visual interest while you listen, not a second task.
 - Captures whatever is playing through the system audio output, locally.
 - Renders it as one of six calm visual modes (bars, waveform, spectral heat,
   pulse field, flow field, or a combined view).
-- Optionally shows a delayed, on-device caption layer of the speech.
+- Optionally shows a delayed, on-device caption layer, with optional
+  on-device translation between a dozen major languages.
 - Themeable, full-screen capable, and driven by a few quiet keyboard shortcuts.
 
 Nothing is recorded, saved, or sent anywhere. Echoform makes no network calls.
 
 ## Requirements
 
-- macOS 14 or later (built and tested on macOS 26).
+- macOS 15 or later (built and tested on macOS 26).
 - To build from source: Xcode 26 with the Swift 6.2 toolchain.
 
 ## Build and install
@@ -83,6 +84,7 @@ Controls are sparse and mostly hidden. Move the mouse to reveal a hint bar.
 | `←` `→`  | Cycle theme                       |
 | `C`      | Open the theme / color panel      |
 | `T`      | Toggle captions                   |
+| `L`      | Open the captions panel           |
 | `,` `.`  | Decrease / increase delay         |
 | `Cmd+Q`  | Quit                              |
 
@@ -105,6 +107,14 @@ and `.` keys set a delay (0 to 10 seconds) that holds back the whole
 visualization, not just the words. At 0 the bars run in real time and the
 captions trail behind by the recognition lag. Raise the delay and the bars are
 held back too, so once it passes that lag the words line up with the bars.
+
+Press `L` to open the captions panel. It picks the spoken language for
+recognition (a dozen major languages) and an optional language to translate
+into. With translation on, each finished sentence is recognized in the spoken
+language and then translated on-device before it appears, so you can, for
+example, follow a meeting held in Korean as English captions. Translation uses
+Apple's Translation framework; the first time you use a language pair, macOS
+downloads that pair once.
 
 ## Themes
 
@@ -133,12 +143,15 @@ Echoform asks for two macOS permissions, and only those two.
   read the audio that is already playing. It never captures, shows, or saves
   the screen or any video. Granting it is a one-time step (see "First run").
 - **Speech Recognition.** Requested only when you turn captions on (`T`).
-  Recognition is forced on-device; if a Mac cannot do on-device recognition,
-  captions simply do not run, rather than sending audio to a server.
+  Recognition runs on-device in the language you choose; if a Mac cannot do
+  on-device recognition for that language, captions simply do not run, rather
+  than sending audio to a server.
 
-Echoform makes no network calls and never records, saves, or uploads audio,
-transcripts, or anything else. Audio is analyzed in memory in real time and
-then discarded.
+Echoform itself makes no network calls and never records, saves, or uploads
+audio, transcripts, or anything else. Audio is analyzed in memory in real time
+and then discarded. Recognition and translation both run on-device; the only
+network use is macOS downloading a translation language pack the first time
+you pick a new pair.
 
 ### Why there is no notarized download
 

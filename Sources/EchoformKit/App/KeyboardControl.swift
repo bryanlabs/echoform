@@ -65,6 +65,7 @@ public final class KeyboardControl {
         case "b": state.cycleBrightness()
         case "t": coordinator.toggleText()
         case "c": state.toggleThemePanel()
+        case "l": state.toggleCaptionPanel()
         case "[": state.adjustIntensity(-0.12)
         case "]": state.adjustIntensity(0.12)
         case ",": state.adjustCaptionDelay(-1)
