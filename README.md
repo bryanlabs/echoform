@@ -52,22 +52,24 @@ cd echoform
 This builds `Echoform.app`, installs it to `/Applications`, and installs an
 `echoform` launcher into `~/bin`. The build is ad-hoc signed. If you have an
 Apple Development certificate it is used automatically instead, which keeps
-macOS from re-asking for Screen Recording access on every rebuild.
+macOS from re-asking for system audio access on every rebuild.
 
 - `./Scripts/package-app.sh` builds the app into `dist/` without installing.
 - `./Scripts/make-icon.sh` regenerates the app icon.
 
-## First run: grant Screen Recording access
+## First run: grant system audio access
 
-macOS routes system audio through the Screen Recording permission, so
-ScreenCaptureKit (which Echoform uses to capture audio) needs it even though
-Echoform only ever captures audio, never video.
+Echoform uses Core Audio process taps to listen to the system audio already
+playing on your Mac. macOS calls this **System Audio Recording Only** in System
+Settings.
 
-1. Launch Echoform. It shows a permission screen.
-2. Click **Open System Settings** (or open System Settings ›
-   Privacy & Security › Screen Recording).
-3. Enable **Echoform** in the list, and authenticate when macOS asks.
-4. Quit and reopen Echoform.
+1. Launch Echoform.
+2. Approve the macOS system audio prompt if it appears.
+3. If the prompt does not appear, open System Settings ›
+   Privacy & Security › Screen & System Audio Recording.
+4. Enable **Echoform** under **System Audio Recording Only**, and authenticate
+   when macOS asks.
+5. Quit and reopen Echoform.
 
 macOS remembers the grant, so you only do this once.
 
@@ -125,12 +127,12 @@ from -2 to +10 seconds. Negative offsets are useful for small timing nudges,
 such as -0.33s. Positive offsets hold back the visualizer so captions and bars
 can line up, but they do not delay what you hear.
 
-Echoform currently observes system audio through ScreenCaptureKit. It does not
-act as an output device and does not route audio onward to your speakers. That
-means a negative caption offset cannot show a word before the speech recognizer
-has emitted it. To make heard audio itself wait for captions, Echoform would
-need a route-through audio mode built around a virtual output device or audio
-driver.
+Echoform currently observes system audio through a Core Audio process tap. It
+does not act as an output device and does not route audio onward to your
+speakers. That means a negative caption offset cannot show a word before the
+speech recognizer has emitted it. To make heard audio itself wait for captions,
+Echoform would need a route-through audio mode built around a virtual output
+device or audio driver.
 
 With translation on in low-latency mode, Echoform keeps the source-language
 partial visible immediately and updates the translated line as translation
@@ -162,8 +164,7 @@ signal through the renderer, useful for trying modes, themes, and brightness.
 
 Echoform asks for two macOS permissions, and only those two.
 
-- **Screen Recording.** macOS routes system-audio capture through the Screen
-  Recording permission, so ScreenCaptureKit needs it. Echoform uses it only to
+- **System Audio Recording Only.** Echoform uses a Core Audio process tap to
   read the audio that is already playing. It never captures, shows, or saves
   the screen or any video. Granting it is a one-time step (see "First run").
 - **Speech Recognition.** Requested only when you turn captions on. By default

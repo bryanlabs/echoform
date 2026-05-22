@@ -30,5 +30,7 @@
 	<string>Echoform</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
 	<string>Echoform transcribes the audio you are listening to, on-device, to show it as calm delayed captions.</string>
+	<key>NSAudioCaptureUsageDescription</key>
+	<string>Echoform analyzes the system audio already playing on your Mac to draw visualizations and optional captions. It does not record or save audio.</string>
 </dict>
 </plist>

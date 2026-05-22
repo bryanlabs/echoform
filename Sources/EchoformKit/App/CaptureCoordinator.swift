@@ -13,8 +13,10 @@ public final class CaptureCoordinator {
     public let translator = CaptionTranslator()
 
     private var capture: AudioCapture?
+    private var isStartingCapture = false
     private var consumeTask: Task<Void, Never>?
     private var playbackTask: Task<Void, Never>?
+    private var permissionHelpTask: Task<Void, Never>?
     private let speech: SpeechCaptioner
     private let pipeline: CaptionPipeline
 
@@ -37,14 +39,10 @@ public final class CaptureCoordinator {
         }
     }
 
-    /// Checks permission and starts capture if it is granted.
+    /// Starts capture. Core Audio prompts for system audio access as needed.
     public func begin() async {
-        let permission = await ScreenRecordingAccess.check()
-        state.permission = permission
-        guard permission == .authorized else {
-            Log.app.notice("Capture not started: Screen Recording unauthorized")
-            return
-        }
+        state.permission = .unknown
+        schedulePermissionHelp()
         await startCapture()
     }
 
@@ -55,7 +53,7 @@ public final class CaptureCoordinator {
     }
 
     public func openSystemSettings() {
-        ScreenRecordingAccess.openSystemSettings()
+        SystemAudioAccess.openSystemSettings()
     }
 
     /// Toggles the caption layer, starting or stopping recognition.
@@ -168,7 +166,10 @@ public final class CaptureCoordinator {
     }
 
     private func startCapture() async {
-        guard capture == nil else { return }
+        guard capture == nil, !isStartingCapture else { return }
+        isStartingCapture = true
+        defer { isStartingCapture = false }
+
         let capture = AudioCapture()
         capture.onStop = { [weak self] error in
             Task { @MainActor in
@@ -184,6 +185,9 @@ public final class CaptureCoordinator {
         do {
             try await capture.start()
             self.capture = capture
+            permissionHelpTask?.cancel()
+            permissionHelpTask = nil
+            state.permission = .authorized
             state.isCapturing = true
             if state.textEnabled { speech.enable() }
             let frames = capture.frames
@@ -196,7 +200,19 @@ public final class CaptureCoordinator {
             Log.app.info("Capture coordinator running")
         } catch {
             Log.app.error("Capture failed to start: \(error.localizedDescription, privacy: .public)")
+            permissionHelpTask?.cancel()
+            permissionHelpTask = nil
             state.permission = .denied
+        }
+    }
+
+    private func schedulePermissionHelp() {
+        permissionHelpTask?.cancel()
+        permissionHelpTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .seconds(2))
+            guard let self, self.capture == nil, !self.state.isCapturing else { return }
+            self.state.permission = .denied
+            Log.app.notice("Capture is waiting for system audio recording authorization")
         }
     }
 
@@ -212,6 +228,8 @@ public final class CaptureCoordinator {
     }
 
     public func stop() async {
+        permissionHelpTask?.cancel()
+        permissionHelpTask = nil
         consumeTask?.cancel()
         consumeTask = nil
         playbackTask?.cancel()

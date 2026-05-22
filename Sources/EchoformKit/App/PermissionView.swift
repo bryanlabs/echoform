@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Shown when Screen Recording permission has not been granted.
+/// Shown when system audio recording permission has not been granted.
 public struct PermissionView: View {
     @Environment(CaptureCoordinator.self) private var coordinator
 
@@ -8,13 +8,13 @@ public struct PermissionView: View {
 
     public var body: some View {
         VStack(spacing: 18) {
-            Text("Echoform needs Screen Recording access")
+            Text("Echoform needs System Audio access")
                 .font(.system(size: 20, weight: .light))
                 .foregroundStyle(.white.opacity(0.85))
 
-            Text("macOS routes system audio through the Screen Recording "
-               + "permission. Echoform captures audio only, never video, and "
-               + "nothing is recorded or saved.")
+            Text("Echoform uses macOS system audio recording to hear what is "
+               + "already playing. It never records your screen, microphone, "
+               + "or files, and nothing is saved.")
                 .font(.system(size: 13))
                 .foregroundStyle(.white.opacity(0.5))
                 .multilineTextAlignment(.center)
@@ -26,7 +26,7 @@ public struct PermissionView: View {
             }
             .controlSize(.large)
 
-            Text("After enabling Echoform in the list, quit and reopen the app.")
+            Text("After enabling Echoform under System Audio Recording Only, quit and reopen the app.")
                 .font(.system(size: 11))
                 .foregroundStyle(.white.opacity(0.3))
         }
