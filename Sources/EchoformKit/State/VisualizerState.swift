@@ -37,12 +37,17 @@ public final class VisualizerState {
     // Caption layer and the shared visualization delay.
     /// Whether the delayed caption layer is shown. Off by default.
     public var textEnabled = false
+    /// Shows replaceable partial captions as soon as recognition emits them.
+    /// This trades occasional text correction for much lower perceived lag,
+    /// which matters more at faster audiobook and podcast playback speeds.
+    public var lowLatencyCaptions = true
     /// Seconds of caption/visual sync offset (-2...10). Positive values hold
     /// back the visualization. Negative values can make already-recognized
     /// captions feel earlier, but cannot display text before recognition emits
     /// it.
     public var captionDelay: Double = 0
     public private(set) var captionWords: [CaptionWord] = []
+    public private(set) var liveCaption: LiveCaptionLine?
     private var nextCaptionID = 0
     private let maxCaptionWords = 64
 
@@ -175,6 +180,11 @@ public final class VisualizerState {
 
     public func toggleText() { textEnabled.toggle() }
 
+    public func setLowLatencyCaptions(_ enabled: Bool) {
+        lowLatencyCaptions = enabled
+        clearCaptions()
+    }
+
     /// Adjusts the caption/visual sync offset, clamped to -2...10 seconds.
     public func adjustCaptionDelay(_ delta: Double) {
         captionDelay = clampCaptionDelay(captionDelay + delta)
@@ -187,6 +197,31 @@ public final class VisualizerState {
     private func clampCaptionDelay(_ value: Double) -> Double {
         let rounded = (value * 100).rounded() / 100
         return min(Self.maxCaptionDelay, max(Self.minCaptionDelay, rounded))
+    }
+
+    public func updateLiveCaption(sourceText: String, translatedText: String? = nil) {
+        let source = sourceText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !source.isEmpty else { return }
+        let translation = translatedText?.trimmingCharacters(in: .whitespacesAndNewlines)
+        liveCaption = LiveCaptionLine(
+            sourceText: source,
+            translatedText: translation?.isEmpty == false ? translation : nil,
+            updatedAt: CACurrentMediaTime())
+    }
+
+    public func updateLiveCaptionTranslation(_ text: String) {
+        let translation = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !translation.isEmpty, let liveCaption else { return }
+        self.liveCaption = LiveCaptionLine(
+            sourceText: liveCaption.sourceText,
+            translatedText: translation,
+            updatedAt: CACurrentMediaTime())
+    }
+
+    public func clearCaptions() {
+        captionWords = []
+        liveCaption = nil
+        nextCaptionID = 0
     }
 
     /// Appends newly recognized words, trimming the oldest beyond the cap.

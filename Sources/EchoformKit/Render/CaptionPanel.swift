@@ -28,6 +28,14 @@ public struct CaptionPanel: View {
             .toggleStyle(.switch)
             .tint(.white.opacity(0.45))
 
+            Toggle(isOn: lowLatencyBinding) {
+                Text("Low Latency")
+                    .font(.system(size: 11, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.7))
+            }
+            .toggleStyle(.switch)
+            .tint(.white.opacity(0.45))
+
             Toggle(isOn: translationBinding) {
                 Text("Translate")
                     .font(.system(size: 11, design: .rounded))
@@ -73,6 +81,13 @@ public struct CaptionPanel: View {
         Binding(
             get: { state.translationEnabled },
             set: { coordinator.setTranslationEnabled($0) }
+        )
+    }
+
+    private var lowLatencyBinding: Binding<Bool> {
+        Binding(
+            get: { state.lowLatencyCaptions },
+            set: { coordinator.setLowLatencyCaptions($0) }
         )
     }
 

@@ -22,7 +22,8 @@ public final class CaptureCoordinator {
         self.state = state
         self.speech = SpeechCaptioner(
             locale: Locale(identifier: CaptionLanguage.named(state.sourceLanguage).speechLocale),
-            onDeviceOnly: state.onDeviceOnly)
+            onDeviceOnly: state.onDeviceOnly,
+            lowLatencyCaptions: state.lowLatencyCaptions)
         self.pipeline = CaptionPipeline(state: state, translator: translator)
 
         speech.onResult = { [weak self] result in
@@ -64,6 +65,7 @@ public final class CaptureCoordinator {
             pipeline.reset()
             speech.enable()
         } else {
+            pipeline.reset()
             speech.disable()
         }
     }
@@ -88,7 +90,17 @@ public final class CaptureCoordinator {
     private func reconfigureSpeech() {
         speech.reconfigure(
             locale: Locale(identifier: CaptionLanguage.named(state.sourceLanguage).speechLocale),
-            onDeviceOnly: state.onDeviceOnly)
+            onDeviceOnly: state.onDeviceOnly,
+            lowLatencyCaptions: state.lowLatencyCaptions)
+    }
+
+    /// Switches between fast replaceable partial captions and steadier delayed
+    /// captions.
+    public func setLowLatencyCaptions(_ value: Bool) {
+        guard value != state.lowLatencyCaptions else { return }
+        state.setLowLatencyCaptions(value)
+        pipeline.reset()
+        reconfigureSpeech()
     }
 
     /// Changes the language captions are translated into.

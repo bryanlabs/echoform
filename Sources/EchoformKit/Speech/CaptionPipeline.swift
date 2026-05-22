@@ -18,6 +18,13 @@ public final class CaptionPipeline {
     private let wordSpread = 0.28
     /// Translate after this many stable words even without sentence punctuation.
     private let chunkWords = 9
+    private let lowLatencyChunkWords = 4
+    private let liveTranslationWordStep = 3
+    private let liveTranslationInterval = 0.7
+    private let liveTranslationMaxWords = 18
+    private var lastLiveTranslationAt = 0.0
+    private var lastLiveTranslationWordCount = 0
+    private var lastLiveTranslationPhrase = ""
 
     public init(state: VisualizerState, translator: CaptionTranslator) {
         self.state = state
@@ -25,13 +32,21 @@ public final class CaptionPipeline {
         translator.onTranslated = { [weak self] text in
             self?.show(text.split(separator: " ").map(String.init))
         }
+        translator.onLiveTranslated = { [weak self] text in
+            self?.state.updateLiveCaptionTranslation(text)
+        }
     }
 
     /// Handles one transcription update.
     public func consume(_ result: TranscriptionResult) {
         let words = result.text.split(separator: " ").map(String.init)
-        let stable = result.isFinal ? words.count : max(0, words.count - 1)
+        let text = result.text.trimmingCharacters(in: .whitespacesAndNewlines)
+        if state.lowLatencyCaptions {
+            consumeLowLatency(text: text, words: words, isFinal: result.isFinal)
+            return
+        }
 
+        let stable = result.isFinal ? words.count : max(0, words.count - 1)
         if state.translationEnabled {
             translateStable(words, stable: stable, isFinal: result.isFinal)
         } else {
@@ -48,6 +63,26 @@ public final class CaptionPipeline {
     public func reset() {
         shownWords = 0
         translatedWords = 0
+        lastLiveTranslationAt = 0
+        lastLiveTranslationWordCount = 0
+        lastLiveTranslationPhrase = ""
+        state.clearCaptions()
+    }
+
+    private func consumeLowLatency(text: String, words: [String], isFinal: Bool) {
+        guard !text.isEmpty else { return }
+        if state.translationEnabled {
+            state.updateLiveCaption(sourceText: text,
+                                    translatedText: state.liveCaption?.translatedText)
+            submitLiveTranslationIfNeeded(words: words, isFinal: isFinal)
+        } else {
+            state.updateLiveCaption(sourceText: text)
+        }
+        if isFinal {
+            lastLiveTranslationAt = 0
+            lastLiveTranslationWordCount = 0
+            lastLiveTranslationPhrase = ""
+        }
     }
 
     /// Translation path: submit completed sentences, or long-enough chunks, of
@@ -66,10 +101,28 @@ public final class CaptionPipeline {
         } else if let cut = lastSentenceEnd(in: pending) {
             submitForTranslation(Array(pending[0...cut]))
             translatedWords += cut + 1
-        } else if pending.count >= chunkWords {
+        } else if pending.count >= (state.lowLatencyCaptions ? lowLatencyChunkWords : chunkWords) {
             submitForTranslation(pending)
             translatedWords = stable
         }
+    }
+
+    private func submitLiveTranslationIfNeeded(words: [String], isFinal: Bool) {
+        guard !words.isEmpty else { return }
+        let phrase = words.suffix(liveTranslationMaxWords).joined(separator: " ")
+        guard !phrase.isEmpty, phrase != lastLiveTranslationPhrase else { return }
+
+        let now = CACurrentMediaTime()
+        let wordDelta = abs(words.count - lastLiveTranslationWordCount)
+        let shouldSubmit = isFinal
+            || wordDelta >= liveTranslationWordStep
+            || now - lastLiveTranslationAt >= liveTranslationInterval
+
+        guard shouldSubmit else { return }
+        lastLiveTranslationAt = now
+        lastLiveTranslationWordCount = words.count
+        lastLiveTranslationPhrase = phrase
+        translator.submitLive(phrase)
     }
 
     private func submitForTranslation(_ words: [String]) {

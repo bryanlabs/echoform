@@ -18,6 +18,7 @@ public struct ControlOverlay: View {
             if state.textEnabled {
                 divider
                 label(captionSummary, emphasis: true)
+                label(state.lowLatencyCaptions ? "low latency" : "steady")
                 if abs(state.captionDelay) > 0.001 {
                     label("sync \(offsetLabel(state.captionDelay))")
                 }

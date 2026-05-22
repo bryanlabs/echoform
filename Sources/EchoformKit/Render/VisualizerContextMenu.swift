@@ -66,6 +66,8 @@ public struct VisualizerContextMenu: View {
 
         Toggle("Captions", isOn: captionsBinding)
 
+        Toggle("Low Latency Captions", isOn: lowLatencyBinding)
+
         Menu("Spoken Language") {
             languageButtons(selection: state.sourceLanguage) { code in
                 coordinator.setSourceLanguage(code)
@@ -118,6 +120,13 @@ public struct VisualizerContextMenu: View {
         Binding(
             get: { state.onDeviceOnly },
             set: { coordinator.setOnDeviceOnly($0) }
+        )
+    }
+
+    private var lowLatencyBinding: Binding<Bool> {
+        Binding(
+            get: { state.lowLatencyCaptions },
+            set: { coordinator.setLowLatencyCaptions($0) }
         )
     }
 

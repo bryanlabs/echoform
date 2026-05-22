@@ -24,8 +24,8 @@ The point is visual interest while you listen, not a second task.
 - Captures whatever is playing through the system audio output, locally.
 - Renders it as one of six calm visual modes (bars, waveform, spectral heat,
   pulse field, flow field, or a combined view).
-- Optionally shows a delayed caption layer, with optional on-device translation
-  between a dozen major languages.
+- Optionally shows a low-latency caption layer, with optional on-device
+  translation between a dozen major languages.
 - Themeable, full-screen capable, and adjustable from a right-click menu.
 
 Nothing is recorded or saved. The visualizer itself makes no network calls.
@@ -75,7 +75,8 @@ macOS remembers the grant, so you only do this once.
 
 Right-click anywhere on the visualizer to open the main controls menu. It
 includes visual mode, theme, brightness, intensity, captions, spoken language,
-translation target, recognition mode, and caption sync offset.
+translation target, recognition mode, low-latency mode, and caption sync
+offset.
 
 Keyboard shortcuts remain available as optional accelerators:
 
@@ -109,6 +110,15 @@ Right-click and enable **Captions** to show a calm, low-contrast text layer in
 the lower window. Pick **Spoken Language** and, if useful, enable **Translate**
 and choose **Translate To**.
 
+**Low Latency Captions** is on by default. In this mode Echoform shows Apple's
+current partial recognition hypothesis immediately, replacing it as Apple
+revises the text. This is tuned for listening above 1x speed, where waiting for
+fully stable words is more distracting than occasional text correction.
+
+Turning **Low Latency Captions** off switches back to the steadier delayed
+caption history. That mode hides the newest partial word and can feel calmer,
+but it usually trails fast podcast or audiobook playback.
+
 Recognition runs behind the audio, so **Caption Sync Offset** in the right-click
 menu lets you tune the relationship between the captions and the visualizer
 from -2 to +10 seconds. Negative offsets are useful for small timing nudges,
@@ -122,11 +132,10 @@ has emitted it. To make heard audio itself wait for captions, Echoform would
 need a route-through audio mode built around a virtual output device or audio
 driver.
 
-With translation on, stable chunks of continuous speech are recognized in the
-spoken language and then translated on-device before they appear, so you can,
-for example, follow a Spanish or Korean source as English captions. Translation
-uses Apple's Translation framework; the first time you use a language pair,
-macOS downloads that pair once.
+With translation on in low-latency mode, Echoform keeps the source-language
+partial visible immediately and updates the translated line as translation
+catches up. Translation uses Apple's Translation framework; the first time you
+use a language pair, macOS downloads that pair once.
 
 **On-device Only** is off by default so languages without installed local speech
 models still work through Apple's online speech recognition. Turn it on if you

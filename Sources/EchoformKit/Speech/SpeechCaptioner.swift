@@ -1,9 +1,9 @@
 import Speech
 import AVFoundation
 
-/// Apple Speech framework transcriber. By default recognition is on-device
-/// only, so no audio leaves the machine. When on-device-only is turned off,
-/// languages without a local model use Apple's online recognition instead.
+/// Apple Speech framework transcriber. When on-device-only is turned off,
+/// languages without a local model can use Apple's online recognition. Low
+/// latency mode disables automatic punctuation so partials arrive faster.
 /// Internal state is serialized on a private queue.
 public final class SpeechCaptioner: Transcriber, @unchecked Sendable {
     public var onResult: ((TranscriptionResult) -> Void)?
@@ -15,11 +15,13 @@ public final class SpeechCaptioner: Transcriber, @unchecked Sendable {
     private var task: SFSpeechRecognitionTask?
     private var running = false
     private var onDeviceOnly: Bool
+    private var lowLatencyCaptions: Bool
 
     /// Creates a transcriber for the given speech locale (e.g. `en-US`, `ko-KR`).
-    public init(locale: Locale, onDeviceOnly: Bool) {
+    public init(locale: Locale, onDeviceOnly: Bool, lowLatencyCaptions: Bool) {
         self.recognizer = SFSpeechRecognizer(locale: locale)
         self.onDeviceOnly = onDeviceOnly
+        self.lowLatencyCaptions = lowLatencyCaptions
     }
 
     public func enable() {
@@ -58,10 +60,11 @@ public final class SpeechCaptioner: Transcriber, @unchecked Sendable {
 
     /// Switches the recognition language and on-device-only mode, rebuilding the
     /// recognizer and restarting recognition if it is currently running.
-    public func reconfigure(locale: Locale, onDeviceOnly: Bool) {
+    public func reconfigure(locale: Locale, onDeviceOnly: Bool, lowLatencyCaptions: Bool) {
         queue.async {
             self.recognizer = SFSpeechRecognizer(locale: locale)
             self.onDeviceOnly = onDeviceOnly
+            self.lowLatencyCaptions = lowLatencyCaptions
             guard self.running else { return }
             if onDeviceOnly, !(self.recognizer?.supportsOnDeviceRecognition ?? false) {
                 self.report(.unavailable)
@@ -112,7 +115,7 @@ public final class SpeechCaptioner: Transcriber, @unchecked Sendable {
         let request = SFSpeechAudioBufferRecognitionRequest()
         request.shouldReportPartialResults = true
         request.requiresOnDeviceRecognition = onDeviceOnly
-        request.addsPunctuation = true
+        request.addsPunctuation = !lowLatencyCaptions
         self.request = request
         self.task = recognizer.recognitionTask(with: request) { [weak self] result, error in
             guard let self else { return }

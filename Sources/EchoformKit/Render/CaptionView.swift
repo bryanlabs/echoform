@@ -13,16 +13,23 @@ public struct CaptionView: View {
 
     private let visibleDuration = 13.0
     private let recentWindow = 22
+    private let liveVisibleDuration = 4.0
 
     public var body: some View {
         let now = CACurrentMediaTime()
+        if state.lowLatencyCaptions,
+           let live = state.liveCaption,
+           now - live.updatedAt < liveVisibleDuration {
+            return AnyView(liveCaption(live))
+        }
+
         let due = state.captionWords.filter { word in
             let shown = shownFor(word, now: now)
             return shown >= 0 && shown < visibleDuration
         }
         let recent = Array(due.suffix(recentWindow))
 
-        return VStack {
+        return AnyView(VStack {
             Spacer(minLength: 0)
             if !recent.isEmpty {
                 captionText(for: recent, now: now)
@@ -36,6 +43,37 @@ public struct CaptionView: View {
                     .background(.black.opacity(0.4), in: RoundedRectangle(cornerRadius: 15))
                     .padding(.bottom, 60)
             }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .allowsHitTesting(false))
+    }
+
+    private func liveCaption(_ live: LiveCaptionLine) -> some View {
+        VStack {
+            Spacer(minLength: 0)
+            VStack(spacing: 6) {
+                if state.translationEnabled,
+                   let translated = live.translatedText,
+                   !translated.isEmpty {
+                    Text(trimmedLiveText(translated, maxWords: 22))
+                        .font(.system(size: 20, weight: .regular, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.92))
+                }
+
+                Text(trimmedLiveText(live.sourceText, maxWords: state.translationEnabled ? 18 : 24))
+                    .font(.system(size: state.translationEnabled ? 14 : 20,
+                                  weight: .regular,
+                                  design: .rounded))
+                    .foregroundStyle(.white.opacity(state.translationEnabled ? 0.5 : 0.92))
+            }
+            .multilineTextAlignment(.center)
+            .lineSpacing(3)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: 660)
+            .padding(.horizontal, 18)
+            .padding(.vertical, 13)
+            .background(.black.opacity(0.4), in: RoundedRectangle(cornerRadius: 15))
+            .padding(.bottom, 60)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .allowsHitTesting(false)
@@ -66,5 +104,11 @@ public struct CaptionView: View {
         let fadeOut = min(1, max(0, (visibleDuration - shownFor) / 3.5))
         let recency = max(0.55, 1.0 - Double(indexFromEnd) * 0.035)
         return max(0, min(0.95, fadeIn * fadeOut * recency))
+    }
+
+    private func trimmedLiveText(_ text: String, maxWords: Int) -> String {
+        let words = text.split(separator: " ")
+        guard words.count > maxWords else { return text }
+        return words.suffix(maxWords).joined(separator: " ")
     }
 }

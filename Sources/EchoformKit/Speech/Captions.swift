@@ -18,3 +18,11 @@ public struct CaptionWord: Identifiable, Sendable {
     public let text: String
     public let spokenMediaTime: Double
 }
+
+/// The current low-latency caption hypothesis. Unlike `CaptionWord`, this is
+/// replaceable because partial speech results can revise their latest words.
+public struct LiveCaptionLine: Sendable {
+    public let sourceText: String
+    public let translatedText: String?
+    public let updatedAt: Double
+}
